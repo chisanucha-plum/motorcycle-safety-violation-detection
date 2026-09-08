@@ -146,13 +146,13 @@ export function AppLayout({ children }: AppLayoutProps) {
   return (
     <ErrorBoundary>
       <div className="flex h-screen bg-background overflow-hidden relative">
-        {/* Floating Action Buttons (FAB) Vertical Toolbar */}
+        {/* Responsive Floating Action Navigation (Left on Desktop, Bottom Dock on Mobile) */}
         <FloatingToolbar />
 
         {/* Main Content Area */}
-        <div className="flex-1 flex flex-col overflow-hidden min-w-0 pl-[70px] sm:pl-[88px]">
+        <div className="flex-1 flex flex-col overflow-hidden min-w-0 pl-0 pb-16 md:pb-0 md:pl-[84px] lg:pl-[88px]">
           <Header />
-          <main className="flex-1 overflow-auto p-3 sm:p-4 md:p-6">
+          <main className="flex-1 overflow-auto p-2.5 sm:p-4 md:p-6">
             <ErrorBoundary>{children}</ErrorBoundary>
           </main>
         </div>

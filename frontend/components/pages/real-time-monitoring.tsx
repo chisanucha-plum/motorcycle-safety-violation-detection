@@ -91,9 +91,9 @@ function FloatingStatsStack({
   ]
 
   return (
-    <div className="absolute top-2 right-2 sm:top-3 sm:right-4 z-20 flex flex-col w-48 sm:w-56 md:w-60 pointer-events-auto">
-      {/* 4 Stacked Floating Frosted Glass Cards */}
-      <div className="flex flex-col gap-2 sm:gap-2.5">
+    <div className="md:absolute md:top-3 md:right-4 z-20 flex flex-col w-full md:w-56 lg:w-60 mt-3 md:mt-0 pointer-events-auto">
+      {/* Cards: 2x2 Grid on Mobile, Vertical Stack on Desktop */}
+      <div className="grid grid-cols-2 md:flex md:flex-col gap-2 sm:gap-2.5">
         {statItems.map((item, idx) => {
           const Icon = item.icon
           return (
@@ -108,22 +108,22 @@ function FloatingStatsStack({
                 "transition-all duration-200 hover:-translate-y-0.5 hover:scale-[1.01] hover:shadow-[0_16px_36px_rgba(0,0,0,0.2)]"
               )}
             >
-              <div className="relative flex items-center justify-between gap-2.5">
+              <div className="relative flex items-center justify-between gap-2">
                 <div className="min-w-0 flex-1">
                   <p className="text-[10px] sm:text-[11px] font-semibold text-[#6B7280] dark:text-gray-400 uppercase tracking-[0.5px] truncate">
                     {item.label}
                   </p>
-                  <p className="text-xl sm:text-2xl font-bold tracking-tight text-[#111827] dark:text-white mt-0.5">
+                  <p className="text-lg sm:text-2xl font-bold tracking-tight text-[#111827] dark:text-white mt-0.5">
                     {item.value}
                   </p>
                 </div>
                 <div
                   className={cn(
-                    "w-9 h-9 sm:w-10 sm:h-10 rounded-xl flex items-center justify-center flex-shrink-0 shadow-xs transition-transform duration-200 group-hover:scale-105",
+                    "w-8 h-8 sm:w-10 sm:h-10 rounded-xl flex items-center justify-center flex-shrink-0 shadow-xs transition-transform duration-200 group-hover:scale-105",
                     item.iconBg
                   )}
                 >
-                  <Icon className={cn("h-4.5 w-4.5 sm:h-5 sm:w-5", item.iconColor)} />
+                  <Icon className={cn("h-4 w-4 sm:h-5 sm:w-5", item.iconColor)} />
                 </div>
               </div>
             </div>
@@ -131,8 +131,8 @@ function FloatingStatsStack({
         })}
       </div>
 
-      {/* Soft reflection effect beneath the entire floating card stack */}
-      <div className="relative h-5 sm:h-6 w-full mt-1 overflow-hidden pointer-events-none opacity-35 dark:opacity-20">
+      {/* Soft reflection effect beneath the floating card stack (desktop only) */}
+      <div className="hidden md:block relative h-5 sm:h-6 w-full mt-1 overflow-hidden pointer-events-none opacity-35 dark:opacity-20">
         <div className="w-full h-full bg-gradient-to-b from-black/15 dark:from-white/10 to-transparent blur-md rounded-2xl transform -scale-y-100" />
       </div>
     </div>
