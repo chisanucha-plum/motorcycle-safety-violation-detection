@@ -5,6 +5,7 @@ import { GeistMono } from "geist/font/mono"
 import { Analytics } from "@vercel/analytics/next"
 import { Suspense } from "react"
 import { AppLayout } from "@/components/app-layout"
+import { PwaRegister } from "@/components/pwa-register"
 import { Toaster } from "@/components/ui/sonner"
 import "./globals.css"
 
@@ -56,6 +57,7 @@ export default function RootLayout({
         <AppLayout>
           <Suspense fallback={null}>{children}</Suspense>
         </AppLayout>
+        <PwaRegister />
         <Toaster />
         <Analytics />
       </body>

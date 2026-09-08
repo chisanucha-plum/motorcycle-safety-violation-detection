@@ -27,6 +27,8 @@ import { getStreamUrl } from "@/services/helmet-detection.service"
 import { DetectionList } from "@/components/real-time/DetectionList"
 import type { DetectionResult } from "@/types/detection.types"
 
+import { cn } from "@/lib/utils"
+
 function NowClock() {
   const [now, setNow] = useState<Date | null>(null)
 
@@ -40,7 +42,15 @@ function NowClock() {
   return <>{now.toLocaleTimeString("th-TH")}</>
 }
 
-function StatsCards({ detections, isLoading, t }: { detections: DetectionResult[]; isLoading: boolean; t: (key: string) => string }) {
+function FloatingStatsStack({
+  detections,
+  isLoading,
+  t,
+}: {
+  detections: DetectionResult[]
+  isLoading: boolean
+  t: (key: string) => string
+}) {
   const stats = useMemo(() => {
     const violations = detections.filter((d) => d.helmetStatus === "not-wearing").length
     const total = detections.length
@@ -49,31 +59,83 @@ function StatsCards({ detections, isLoading, t }: { detections: DetectionResult[
     return { violations, total, compliance, overCapacity }
   }, [detections])
 
-  return (
-    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-      <StatCard icon={BikeIcon} label={t("stats.motorcyclesDetected")} value={isLoading ? "-" : stats.total} bgColor="bg-info" iconColor="text-info-foreground" />
-      <StatCard icon={Users} label={t("stats.overCapacity")} value={isLoading ? "-" : stats.overCapacity} bgColor="bg-warning" iconColor="text-warning-foreground" />
-      <StatCard icon={AlertTriangle} label={t("stats.violations")} value={isLoading ? "-" : stats.violations} bgColor="bg-critical" iconColor="text-critical-foreground" />
-      <StatCard icon={CheckCircle} label={t("stats.complianceRate")} value={isLoading ? "-" : `${stats.compliance}%`} bgColor="bg-success" iconColor="text-success-foreground" />
-    </div>
-  )
-}
+  const statItems = [
+    {
+      icon: BikeIcon,
+      label: t("stats.motorcyclesDetected"),
+      value: isLoading ? "-" : stats.total,
+      iconBg: "bg-[#DBEAFE] dark:bg-[#1e3a8a]/40",
+      iconColor: "text-[#3B82F6] dark:text-[#60a5fa]",
+    },
+    {
+      icon: Users,
+      label: t("stats.overCapacity"),
+      value: isLoading ? "-" : stats.overCapacity,
+      iconBg: "bg-[#FEF3C7] dark:bg-[#78350f]/40",
+      iconColor: "text-[#F59E0B] dark:text-[#fbbf24]",
+    },
+    {
+      icon: AlertTriangle,
+      label: t("stats.violations"),
+      value: isLoading ? "-" : stats.violations,
+      iconBg: "bg-[#FEE2E2] dark:bg-[#7f1d1d]/40",
+      iconColor: "text-[#EF4444] dark:text-[#f87171]",
+    },
+    {
+      icon: CheckCircle,
+      label: t("stats.complianceRate"),
+      value: isLoading ? "-" : `${stats.compliance}%`,
+      iconBg: "bg-[#D1FAE5] dark:bg-[#064e3b]/40",
+      iconColor: "text-[#10B981] dark:text-[#34d399]",
+    },
+  ]
 
-function StatCard({ icon: Icon, label, value, bgColor, iconColor }: { icon: React.ComponentType<{ className?: string }>; label: string; value: string | number; bgColor: string; iconColor: string }) {
   return (
-    <Card>
-      <CardContent className="p-4">
-        <div className="flex items-center gap-3">
-          <div className={`w-10 h-10 ${bgColor} rounded-lg flex items-center justify-center`}>
-            <Icon className={`h-5 w-5 ${iconColor}`} />
-          </div>
-          <div>
-            <p className="text-sm text-muted-foreground">{label}</p>
-            <p className="text-2xl font-bold text-foreground">{value}</p>
-          </div>
-        </div>
-      </CardContent>
-    </Card>
+    <div className="absolute top-2 right-2 sm:top-3 sm:right-4 z-20 flex flex-col w-48 sm:w-56 md:w-60 pointer-events-auto">
+      {/* 4 Stacked Floating Frosted Glass Cards */}
+      <div className="flex flex-col gap-2 sm:gap-2.5">
+        {statItems.map((item, idx) => {
+          const Icon = item.icon
+          return (
+            <div
+              key={idx}
+              className={cn(
+                "group relative overflow-hidden rounded-[16px] p-3 sm:p-3.5",
+                "bg-[rgba(255,255,255,0.88)] dark:bg-[#17181c]/90 backdrop-blur-[14px]",
+                "border border-[rgba(255,255,255,0.6)] dark:border-white/15",
+                "border-t-white/90 dark:border-t-white/30",
+                "shadow-[0_12px_30px_rgba(0,0,0,0.15)]",
+                "transition-all duration-200 hover:-translate-y-0.5 hover:scale-[1.01] hover:shadow-[0_16px_36px_rgba(0,0,0,0.2)]"
+              )}
+            >
+              <div className="relative flex items-center justify-between gap-2.5">
+                <div className="min-w-0 flex-1">
+                  <p className="text-[10px] sm:text-[11px] font-semibold text-[#6B7280] dark:text-gray-400 uppercase tracking-[0.5px] truncate">
+                    {item.label}
+                  </p>
+                  <p className="text-xl sm:text-2xl font-bold tracking-tight text-[#111827] dark:text-white mt-0.5">
+                    {item.value}
+                  </p>
+                </div>
+                <div
+                  className={cn(
+                    "w-9 h-9 sm:w-10 sm:h-10 rounded-xl flex items-center justify-center flex-shrink-0 shadow-xs transition-transform duration-200 group-hover:scale-105",
+                    item.iconBg
+                  )}
+                >
+                  <Icon className={cn("h-4.5 w-4.5 sm:h-5 sm:w-5", item.iconColor)} />
+                </div>
+              </div>
+            </div>
+          )
+        })}
+      </div>
+
+      {/* Soft reflection effect beneath the entire floating card stack */}
+      <div className="relative h-5 sm:h-6 w-full mt-1 overflow-hidden pointer-events-none opacity-35 dark:opacity-20">
+        <div className="w-full h-full bg-gradient-to-b from-black/15 dark:from-white/10 to-transparent blur-md rounded-2xl transform -scale-y-100" />
+      </div>
+    </div>
   )
 }
 
@@ -102,11 +164,17 @@ function levelFromRate(rate: number): LevelKey {
 function CampusMap({
   t,
   mjpegUrl,
+  cameraLabel,
   violationRate = 0,
+  detections = [],
+  isLoading = false,
 }: {
   t: (key: string) => string
   mjpegUrl?: string
+  cameraLabel: string
   violationRate?: number
+  detections?: DetectionResult[]
+  isLoading?: boolean
 }) {
   const level = levelFromRate(violationRate)
 
@@ -128,7 +196,7 @@ function CampusMap({
   }, [expanded])
 
   return (
-    <Card>
+    <Card className="overflow-hidden">
       <CardHeader className="pb-2">
         <CardTitle className="flex items-center gap-2 text-lg">
           <MapPin className="h-5 w-5" />
@@ -138,6 +206,10 @@ function CampusMap({
       <CardContent className="p-2 pt-0">
         <div className="relative">
           <img src="/campus_map.png" alt="KMUTT Bangmod campus map" width={1866} height={1166} className="w-full h-auto rounded-md" />
+
+          {/* Floating Glass Stats Stack overlapping on the right */}
+          <FloatingStatsStack detections={detections} isLoading={isLoading} t={t} />
+
           <div
             className="pin-wrap"
             style={{ left: `${CAMERA_LOCATION.x}%`, top: `${CAMERA_LOCATION.y}%` }}
@@ -170,7 +242,7 @@ function CampusMap({
           {!expanded && (
             <div className="flex items-center gap-2 px-2.5 py-1.5 text-xs font-medium border-b">
               <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
-              {t("camera.camera1")}
+              {cameraLabel}
             </div>
           )}
           {mjpegUrl ? (
@@ -208,7 +280,7 @@ function CampusMap({
                 <X className="h-4 w-4" />
               </Button>
               <div className="absolute bottom-4 left-1/2 -translate-x-1/2 bg-black/70 backdrop-blur-sm rounded-lg px-4 py-2 text-white text-sm">
-                {t("camera.camera1")}
+                {cameraLabel}
               </div>
             </>
           )}
@@ -221,6 +293,8 @@ function CampusMap({
 
 export function RealTimeMonitoring() {
   const { t } = useLanguage("en")
+  const cameraId = "camera-1"
+  const cameraLabel = t("camera.camera1")
 
   // Client-effective preferences from the settings page (localStorage-backed)
   const [prefs] = useState(loadDisplayPrefs)
@@ -240,6 +314,7 @@ export function RealTimeMonitoring() {
 
   const { detections, isLoading, error, isRecording, setIsRecording } = useRealTimeDetections({
     maxItems: Math.min(prefs.realtimeRows, MAX_SSE_BUFFER),
+    cameraId,
     onDetections: handleNewDetections,
   })
 
@@ -252,8 +327,8 @@ export function RealTimeMonitoring() {
   const [mjpegUrl, setMjpegUrl] = useState<string | undefined>(undefined)
 
   useEffect(() => {
-    setMjpegUrl(isRecording ? getStreamUrl() : undefined)
-  }, [isRecording])
+    setMjpegUrl(isRecording ? getStreamUrl(cameraId) : undefined)
+  }, [cameraId, isRecording])
 
   const violationRate = useMemo(() => {
     if (detections.length === 0) return 0
@@ -264,59 +339,80 @@ export function RealTimeMonitoring() {
   }, [detections])
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-5 sm:space-y-6">
       {error && (
-        <div className="bg-critical border border-critical-foreground/20 rounded-lg p-4 flex items-start justify-between gap-3">
+        <div className="bg-destructive/10 border border-destructive/20 rounded-2xl p-4 flex items-start justify-between gap-3">
           <div className="flex items-start gap-3">
-            <AlertCircle className="h-5 w-5 text-critical-foreground flex-shrink-0 mt-0.5" />
+            <AlertCircle className="h-5 w-5 text-destructive flex-shrink-0 mt-0.5" />
             <div>
-              <p className="text-sm font-medium text-foreground">{t("errors.errorOccurred")}</p>
+              <p className="text-sm font-semibold text-foreground">{t("errors.errorOccurred")}</p>
               <p className="text-sm text-muted-foreground">{error.message}</p>
             </div>
           </div>
-          <Button size="sm" variant="outline" onClick={() => window.location.reload()} className="gap-2">
+          <Button size="sm" variant="outline" onClick={() => window.location.reload()} className="gap-2 rounded-xl">
             <RotateCw className="h-4 w-4" />
             {t("buttons.retry")}
           </Button>
         </div>
       )}
 
+      {/* Top Header & Camera Action Controls */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h2 className="text-2xl font-bold text-foreground">{t("header.title")}</h2>
-          <p className="text-muted-foreground">
+          <h2 className="text-2xl font-bold tracking-tight text-foreground">{t("header.title")}</h2>
+          <p className="text-sm text-muted-foreground mt-0.5">
             {t("header.lastUpdate")} <NowClock />
           </p>
         </div>
-        <div className="flex items-center gap-4">
-          <div className="flex items-center gap-2">
-            <div className={`w-3 h-3 rounded-full ${isRecording ? "bg-success-foreground animate-pulse" : "bg-muted-foreground/40"}`} />
-            <span className="text-sm text-muted-foreground">{t("status." + (isRecording ? "running" : "stopped"))}</span>
+
+        <div className="flex items-center flex-wrap gap-2.5 sm:gap-3">
+          {/* Status Badge */}
+          <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-xl border border-border/80 bg-card shadow-xs">
+            <span className={cn(
+              "w-2.5 h-2.5 rounded-full",
+              isRecording ? "bg-emerald-500 animate-pulse" : "bg-muted-foreground/40"
+            )} />
+            <span className="text-xs font-semibold text-muted-foreground">
+              {t("status." + (isRecording ? "running" : "stopped"))}
+            </span>
           </div>
-          <Button variant={isRecording ? "destructive" : "default"} size="sm" onClick={() => setIsRecording(!isRecording)} disabled={isLoading} className="gap-2">
+
+          {/* Recording Toggle Button */}
+          <Button
+            variant={isRecording ? "destructive" : "default"}
+            size="sm"
+            onClick={() => setIsRecording(!isRecording)}
+            disabled={isLoading}
+            className="gap-2 rounded-xl h-9 px-3.5 shadow-xs font-semibold"
+          >
             {isRecording ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
             {t("buttons." + (isRecording ? "stopRecording" : "startRecording"))}
           </Button>
         </div>
       </div>
 
-      <StatsCards detections={detections} isLoading={isLoading} t={t} />
+      <CampusMap
+        t={t}
+        mjpegUrl={mjpegUrl}
+        cameraLabel={cameraLabel}
+        violationRate={violationRate}
+        detections={detections}
+        isLoading={isLoading}
+      />
 
-      <CampusMap t={t} mjpegUrl={mjpegUrl} violationRate={violationRate} />
-
-
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Clock className="h-5 w-5" />
+      {/* Latest Results Card */}
+      <Card className="rounded-2xl border-border/80 shadow-xs">
+        <CardHeader className="pb-3">
+          <CardTitle className="flex items-center gap-2 text-base sm:text-lg font-bold">
+            <Clock className="h-4.5 w-4.5 text-muted-foreground" />
             {t("detection.latestResults")}
           </CardTitle>
         </CardHeader>
         <CardContent>
           {isLoading && detections.length === 0 ? (
-            <div className="text-center py-8">
-              <div className="w-8 h-8 border-4 border-muted border-t-foreground rounded-full animate-spin mx-auto mb-3" />
-              <p className="text-muted-foreground">{t("detection.loading")}</p>
+            <div className="text-center py-12 text-muted-foreground">
+              <div className="w-10 h-10 border-3 border-primary/20 border-t-primary rounded-full animate-spin mx-auto mb-3" />
+              <p className="text-sm font-medium">{t("detection.loading")}</p>
             </div>
           ) : (
             <DetectionList detections={visibleDetections} t={t} />
