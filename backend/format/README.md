@@ -11,6 +11,7 @@ which machine runs inference.
 | `.pt` | single file | slowest | training source only — never runtime |
 | ONNX FP32 | one `.onnx` file | 346 / 996 ms | universal: AMD CPUs, GPU boxes, portability |
 | **OpenVINO FP32** | folder `<name>_openvino_model/` (`xml`+`bin`+`metadata.yaml`) | **267 / 85 ms** | Intel CPU host (this project's deployment target) |
+| TensorRT FP32 | one `.engine` file | NVIDIA GPU only | NVIDIA deployment; build on the target GPU |
 | FP16 | same files, `half=True` | faster on GPU only | NVIDIA runtime (TensorRT / onnxruntime-gpu) |
 | INT8 | openvino `int8=True` + calibration images | fastest CPU, accuracy −1–2% | only after accuracy validation |
 
@@ -48,6 +49,10 @@ cd backend
 
 # ONNX variants (fallback for non-Intel machines), same pairs
 .\venv\Scripts\python.exe format\export_model.py train\epoch250.pt train\epoch250.onnx --imgsz 1280
+
+# TensorRT engine (requires NVIDIA GPU, CUDA, and TensorRT)
+.\venv\Scripts\python.exe format\export_model.py train\epoch250.pt train\epoch250.engine --format engine --imgsz 1280
+# `tensorrt` is also accepted as an alias for `engine`.
 ```
 
 After switching `models` paths in config, restart the backend.
@@ -64,5 +69,9 @@ After switching `models` paths in config, restart the backend.
 4. **Export only from `.pt`.** Exporting an `.onnx` raises `TypeError`.
 5. **Retrain → re-export → restart.** Config points at the exported path, so a
    stale export silently serves the old model after retraining.
+6. **TensorRT engines are machine-specific.** Export with `--format engine` on
+   the NVIDIA GPU and CUDA/TensorRT environment that will run the model. The
+   output must use the `.engine` extension; it is not portable to another GPU
+   architecture or to a CPU host.
 
 

@@ -53,10 +53,14 @@ class DetectionService:
         # Exported formats (ONNX/OpenVINO/TensorRT...) reject torch-style
         # .to()/device= — their runtime picks the execution provider itself
         self._moto_is_pt = (
-            not str(bike_model).lower().endswith((".onnx", "_openvino_model"))
+            not str(bike_model)
+            .lower()
+            .endswith((".onnx", ".engine", "_openvino_model"))
         )
         self._helmet_is_pt = (
-            not str(helmet_model).lower().endswith((".onnx", "_openvino_model"))
+            not str(helmet_model)
+            .lower()
+            .endswith((".onnx", ".engine", "_openvino_model"))
         )
         if self._moto_is_pt:
             self._moto_model.to(self._device)

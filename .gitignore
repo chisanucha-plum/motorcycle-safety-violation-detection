@@ -71,6 +71,7 @@ cover/
 /snapshots/
 /src/case/
 /src/image/
+/benchmark/results
 # FastAPI / Env
 .env
 uvicorn.log
@@ -78,6 +79,8 @@ backend/frames_storage/
 /frames_storage/
 backend/train/
 /train
+backend/benchmark/results/
+
 
 # Configuration files (local/secrets)
 config.development.json
