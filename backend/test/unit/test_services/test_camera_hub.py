@@ -53,7 +53,7 @@ class TestOpenCapture:
         with patch("app.services.camera_hub.cv2.VideoCapture") as mock_ctor:
             hub._open_capture(config)
 
-        mock_ctor.assert_called_once_with(url)
+        mock_ctor.assert_called_once_with(url, cv2.CAP_FFMPEG)
 
     def test_file_path_normalized_via_pathlib(self):
         hub = CameraHub()
