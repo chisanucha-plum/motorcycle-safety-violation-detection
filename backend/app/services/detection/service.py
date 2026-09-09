@@ -7,13 +7,14 @@ import numpy as np
 import torch
 from ultralytics import YOLO
 
-from app.configuration import DetectionConfig
+from app.configuration import Configuration, DetectionConfig
 from app.models.detection import DetectionRecord
 from app.services.detection.annotate import MOTO_COLOR, draw_box, draw_detection_line
 from app.services.detection.helmet_analyzer import HelmetAnalyzer, extract_box_coords
 from app.services.detection.line_counter import LineCrossingCounter
 
 logger = logging.getLogger(__name__)
+config = Configuration.get_config()
 
 
 class DetectionService:
@@ -29,8 +30,8 @@ class DetectionService:
         self,
         bike_model: Path,
         helmet_model: Path,
-        config: DetectionConfig,
     ) -> None:
+        detection_config = config.detection
         """Load both models and prepare the crossing counter and analyzer.
 
         Args:
@@ -63,20 +64,20 @@ class DetectionService:
         if self._helmet_is_pt:
             self._helmet_model.to(self._device)
 
-        self._config: DetectionConfig = config
-        self._counter = LineCrossingCounter(config.line_position_percent)
+        self._config: DetectionConfig = detection_config
+        self._counter = LineCrossingCounter(detection_config.line_position_percent)
         self._helmet_analyzer = HelmetAnalyzer(
-            self._helmet_model, config, self._device, is_pt=self._helmet_is_pt
+            self._helmet_model, detection_config, self._device, is_pt=self._helmet_is_pt
         )
 
         logger.info(
             "DetectionService initialized",
             extra={
                 "device": self._device,
-                "roi_side_pad": config.roi_side_pad,
-                "roi_top_pad": config.roi_top_pad,
-                "roi_bottom_pad": config.roi_bottom_pad,
-                "line_position_percent": config.line_position_percent,
+                "roi_side_pad": detection_config.roi_side_pad,
+                "roi_top_pad": detection_config.roi_top_pad,
+                "roi_bottom_pad": detection_config.roi_bottom_pad,
+                "line_position_percent": detection_config.line_position_percent,
             },
         )
 
@@ -100,9 +101,11 @@ class DetectionService:
 
         self._counter.ensure_line(frame.shape[1])
         records = self._process_motorcycle_tracks(frame)
-        draw_detection_line(
-            frame, self._counter.line_x, self._config.line_overlay_alpha
-        )
+        line_x = self._counter.line_x
+        if line_x is not None:
+            draw_detection_line(
+                frame, line_x, self._config.line_overlay_alpha
+            )
         return frame, records
 
     def _process_motorcycle_tracks(self, frame: np.ndarray) -> list[DetectionRecord]:
@@ -110,18 +113,19 @@ class DetectionService:
         records: list[DetectionRecord] = []
 
         try:
-            device_kw = {"device": self._device} if self._moto_is_pt else {}
             with torch.inference_mode():
-                result = self._moto_model.track(
-                    frame,
-                    conf=self._config.bike_confidence,
-                    persist=True,
-                    tracker=self._config.tracker,
-                    classes=[self._config.bike_id],
-                    imgsz=640,
-                    verbose=False,
-                    **device_kw,
-                )[0]
+                track_kwargs: dict[str, object] = {
+                    "conf": self._config.bike_confidence,
+                    "persist": True,
+                    "tracker": self._config.tracker,
+                    "classes": [self._config.bike_id],
+                    "imgsz": config.detection.bike_imgsz,
+                    "verbose": False,
+                }
+                if self._moto_is_pt:
+                    track_kwargs["device"] = self._device
+                results = self._moto_model.track(frame, **track_kwargs)  # type: ignore[arg-type]
+                result = results[0]
         except Exception as e:
             logger.error(f"Motorcycle tracking failed: {e}")
             return records
@@ -129,7 +133,8 @@ class DetectionService:
         if result.boxes is None or len(result.boxes) == 0:
             return records
 
-        for box in result.boxes:
+        boxes_list = list(result.boxes)  # type: ignore[arg-type]
+        for box in boxes_list:
             if box.id is None:
                 continue
 

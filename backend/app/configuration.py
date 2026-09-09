@@ -29,6 +29,7 @@ class DetectionConfig:
     bike_id: int
     bike_confidence: float
     tracker: str
+    bike_imgsz: int
 
     # Helmet classification (stage 2)
     helmet_confidence: float
@@ -50,17 +51,18 @@ class DetectionConfig:
         """Create DetectionConfig from dictionary."""
         return DetectionConfig(
             bike_id=data.get("bike_id", 3),
-            bike_confidence=data.get("bike_confidence", 0.5),
+            bike_confidence=data.get("bike_confidence"),
             tracker=data.get("tracker", "bytetrack.yaml"),
-            helmet_confidence=data.get("helmet_confidence", 0.20),
-            helmet_imgsz=data.get("helmet_imgsz", 640),
+            bike_imgsz=data.get("bike_imgsz"),
+            helmet_confidence=data.get("helmet_confidence"),
+            helmet_imgsz=data.get("helmet_imgsz"),
             helmet_on=data.get("helmet_on", "helmet on"),
             helmet_off=data.get("helmet_off", "helmet off"),
-            line_position_percent=data.get("line_position_percent", 0.5),
-            roi_side_pad=data.get("roi_side_pad", 2.0),
-            roi_top_pad=data.get("roi_top_pad", 3.0),
-            roi_bottom_pad=data.get("roi_bottom_pad", 1.0),
-            line_overlay_alpha=data.get("line_overlay_alpha", 0.3),
+            line_position_percent=data.get("line_position_percent"),
+            roi_side_pad=data.get("roi_side_pad"),
+            roi_top_pad=data.get("roi_top_pad"),
+            roi_bottom_pad=data.get("roi_bottom_pad"),
+            line_overlay_alpha=data.get("line_overlay_alpha"),
         )
 
 
@@ -77,7 +79,7 @@ class ModelSettingsConfig:
         return ModelSettingsConfig(
             bike_model=data.get("bike_model", "yolov8n"),
             helmet_model=data["helmet_model"],
-            jpeg_quality=data.get("jpeg_quality", 60),
+            jpeg_quality=data.get("jpeg_quality"),
         )
 
 
@@ -133,14 +135,14 @@ class PostgresConfig:
         )
         return PostgresConfig(
             database_url=database_url,
-            host=os.environ.get("DATABASE_HOST", os.environ.get("host", "localhost")),
-            port=int(os.environ.get("DATABASE_PORT", os.environ.get("port", "5432"))),
-            user=os.environ.get("DATABASE_USER", os.environ.get("user", "postgres")),
+            host=os.environ.get("DATABASE_HOST", os.environ.get("host")),
+            port=int(os.environ.get("DATABASE_PORT", os.environ.get("port"))),
+            user=os.environ.get("DATABASE_USER", os.environ.get("user")),
             password=os.environ.get(
-                "DATABASE_PASSWORD", os.environ.get("password", "password")
+                "DATABASE_PASSWORD", os.environ.get("password")
             ),
             database=os.environ.get(
-                "DATABASE_NAME", os.environ.get("dbname", "helmet_detection")
+                "DATABASE_NAME", os.environ.get("dbname")
             ),
         )
 
@@ -182,13 +184,20 @@ class RefreshTokenCookie:
 
     @staticmethod
     def from_dict(obj: Any) -> "RefreshTokenCookie":
+        samesite_value = obj.get("samesite", "lax")
+        if samesite_value not in ("lax", "strict", "none"):
+            samesite_value = "lax"
+        
+        max_age_raw = obj.get("max_age", 2592000)
+        max_age = int(max_age_raw) if max_age_raw is not None else 2592000
+        
         return RefreshTokenCookie(
-            cookie_name=str(obj.get("cookie_name")),
+            cookie_name=str(obj.get("cookie_name", "")),
             legacy_cookie_name=str(obj.get("legacy_cookie_name", "")),
             httponly=bool(obj.get("httponly", False)),
             secure=bool(obj.get("secure", False)),
-            samesite=str(obj.get("samesite", "lax")),
-            max_age=int(obj.get("max_age", 2592000)),
+            samesite=samesite_value,
+            max_age=max_age,
             path=str(obj.get("path", "/")),
             domain=obj.get("domain"),
         )

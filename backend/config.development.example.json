@@ -16,7 +16,8 @@
     "roi_top_pad": 3.0,
     "roi_bottom_pad": 1.0,
     "line_position_percent": 0.5,
-    "line_overlay_alpha": 0.3
+    "line_overlay_alpha": 0.3,
+    "bike_imgsz": 640
   },
   "application_settings": {
     "video_path": "src/case/case_03.mp4",

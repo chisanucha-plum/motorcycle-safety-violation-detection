@@ -17,6 +17,7 @@ from app.services.detection import DetectionService
 from app.services.frame_storage import frame_storage
 
 logger = logging.getLogger(__name__)
+config = Configuration.get_config()
 
 # Seconds to wait before retrying a dropped live stream (RTSP/webcam)
 # Frame queues are latest-wins (drop stale JPEGs); detection queues must not lose records
@@ -241,7 +242,6 @@ class CameraHub:
 
     def _grab_loop(
         self,
-        config: Configuration,
         service: DetectionService,
         app_settings: ApplicationSettingsConfig,
     ) -> None:
@@ -252,7 +252,6 @@ class CameraHub:
         source drops instead of seeking (live streams cannot seek).
 
         Args:
-            config: Application configuration
             service: Detection service (reset when the stream reconnects)
         """
         cap: cv2.VideoCapture | None = None
@@ -261,12 +260,12 @@ class CameraHub:
                 if cap is None or not cap.isOpened():
                     if cap is not None:
                         cap.release()
-                    cap = self._open_capture_with_retry(config, app_settings)
+                    cap = self._open_capture_with_retry(app_settings)
                     if cap is None:
                         break
 
                 ret, frame = cap.read()
-                if not ret:
+                if not ret or frame is None:
                     logger.warning("Frame grab failed on live source, reconnecting...")
                     cap.release()
                     cap = None
@@ -283,15 +282,15 @@ class CameraHub:
             logger.info("Grabber thread stopped")
 
     def _open_capture_with_retry(
-        self, config: Configuration, app_settings: ApplicationSettingsConfig
+        self, app_settings: ApplicationSettingsConfig
     ) -> cv2.VideoCapture | None:
         """Retry opening a live source without blocking shutdown."""
         while not self._stop_event.is_set():
-            cap = self._open_capture(config, app_settings)
+            cap = self._open_capture(app_settings)
             if cap.isOpened():
                 logger.info(
                     "Live source connected: %s",
-                    _describe_source(config.application_settings),
+                    _describe_source(app_settings),
                 )
                 return cap
             cap.release()
@@ -305,23 +304,20 @@ class CameraHub:
 
     def _get_service(self) -> DetectionService:
         if self._service is None:
-            config = Configuration.get_config()
             self._service = DetectionService(
                 bike_model=Path(config.models.bike_model),
                 helmet_model=Path(config.models.helmet_model),
-                config=config.detection,
             )
         return self._service
 
     def _open_capture(
         self,
-        config: Configuration,
         app_settings: ApplicationSettingsConfig | None = None,
     ) -> cv2.VideoCapture:
         """Open video capture from configured source (webcam, RTSP stream, or file).
 
         Args:
-            config: Application configuration
+            app_settings: Application configuration (optional, uses global config if None)
 
         Returns:
             cv2.VideoCapture instance
@@ -384,7 +380,6 @@ class CameraHub:
         newest frame so inference lag never accumulates into stream delay. File
         sources are read sequentially and loop back to the start when finished.
         """
-        config = Configuration.get_config()
         service = self._get_service()
         service.reset_tracks()
 
@@ -399,13 +394,13 @@ class CameraHub:
         if is_live_source:
             grab_thread = threading.Thread(
                 target=self._grab_loop,
-                args=(config, service, app_settings),
+                args=(service, app_settings),
                 daemon=True,
             )
             grab_thread.start()
             logger.info("Live source grabber thread started")
         else:
-            cap = self._open_capture(config)
+            cap = self._open_capture()
             if not cap.isOpened():
                 logger.error(f"Failed to open video source: {app_settings.video_path}")
                 return
@@ -427,8 +422,11 @@ class CameraHub:
                             break
                         continue
                 else:
+                    if cap is None:
+                        logger.error("VideoCapture is None")
+                        break
                     ret, frame = cap.read()
-                    if not ret:
+                    if not ret or frame is None:
                         logger.warning(
                             f"Video loop complete (read {processed_count} frames), restarting..."
                         )

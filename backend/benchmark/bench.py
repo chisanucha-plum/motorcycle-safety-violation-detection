@@ -14,11 +14,11 @@ import cv2
 from app.configuration import Configuration
 from app.services.detection import DetectionService
 
+config = Configuration.get_config()
+
 
 def main() -> None:
     frames_wanted = int(sys.argv[1]) if len(sys.argv) > 1 else 60
-
-    config = Configuration.get_config()
     service = DetectionService(
         Path(config.models.bike_model),
         Path(config.models.helmet_model),
