@@ -2,7 +2,7 @@
 
 import { Badge } from "@/components/ui/badge"
 import { AlertTriangle, Camera, CheckCircle, Clock, Users } from "lucide-react"
-import { memo, useRef, useState } from "react"
+import { memo, useCallback, useRef, useState } from "react"
 import { useVirtualizer } from "@tanstack/react-virtual"
 import { DetectionModal } from "./DetectionModal"
 import { API_BASE_URL } from "@/lib/api/config"
@@ -18,24 +18,26 @@ const VIRTUALIZER_ESTIMATED_SIZE = 120
 const VIRTUALIZER_OVERSCAN = 6
 
 /** memo: page-level state (filters, loading) re-renders without item props changing —
- *  detection/t identities are stable, so 500 items must not re-render with them */
+ *  detection/t identities are stable, so 500 items must not re-render with them.
+ *  onOpenImage is a stable useCallback ref so memo actually works. */
 const DetectionItem = memo(function DetectionItem({
   detection,
   t,
-  onImageClick,
+  onOpenImage,
 }: {
   detection: DetectionResult
   t: (key: string) => string
-  onImageClick: () => void
+  /** Stable callback — receives framePath so the parent doesn't need to close over it */
+  onOpenImage: (framePath: string | undefined) => void
 }) {
   const isWearing = detection.helmetStatus === "wearing"
 
   return (
-    <div className="group flex flex-row items-center gap-3.5 p-3 sm:p-3.5 bg-card/80 hover:bg-card border border-border/80 hover:border-border rounded-xl transition-all duration-200 shadow-xs hover:shadow-md">
+    <div className="group flex flex-row items-center gap-2.5 sm:gap-3.5 p-2.5 sm:p-3.5 bg-card/80 hover:bg-card border border-border/80 hover:border-border rounded-xl transition-all duration-200 shadow-xs hover:shadow-md">
       {detection.framePath ? (
         <div
-          className="relative flex-shrink-0 w-20 h-20 sm:w-22 sm:h-22 rounded-xl overflow-hidden bg-muted border border-border/80 cursor-pointer shadow-xs group/img"
-          onClick={onImageClick}
+          className="relative flex-shrink-0 w-16 h-16 xs:w-20 xs:h-20 sm:w-22 sm:h-22 rounded-xl overflow-hidden bg-muted border border-border/80 cursor-pointer shadow-xs group/img"
+          onClick={() => onOpenImage(detection.framePath)}
         >
           <img
             src={`${API_BASE_URL}/helmet/frame/${detection.framePath}`}
@@ -118,13 +120,15 @@ export function DetectionList({ detections, t }: DetectionListProps) {
     overscan: VIRTUALIZER_OVERSCAN,
   })
 
-  const handleImageClick = (framePath: string | undefined) => {
+  // Stable reference — does NOT close over any per-item value,
+  // so memo on DetectionItem can actually bail out on re-renders.
+  const handleOpenImage = useCallback((framePath: string | undefined) => {
     if (framePath) {
       setSelectedImage(`${API_BASE_URL}/helmet/frame/${framePath}`)
     }
-  }
+  }, [])
 
-  const handleCloseModal = () => setSelectedImage(null)
+  const handleCloseModal = useCallback(() => setSelectedImage(null), [])
 
   if (detections.length === 0) {
     return (
@@ -154,7 +158,7 @@ export function DetectionList({ detections, t }: DetectionListProps) {
                 <DetectionItem
                   detection={detection}
                   t={t}
-                  onImageClick={() => handleImageClick(detection.framePath)}
+                  onOpenImage={handleOpenImage}
                 />
               </div>
             )

@@ -1,4 +1,4 @@
-import { memo, useMemo } from "react"
+import { memo } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import {
   Area,
@@ -21,6 +21,9 @@ const tooltipStyle = {
   borderRadius: "12px",
   boxShadow: "0 4px 12px rgba(0,0,0,0.1)",
 }
+
+// Static cursor prevents recharts from re-rendering the entire chart tree on every mousemove
+const staticCursor = { stroke: "var(--border)", strokeWidth: 1 }
 
 const lineChartDot = { fill: "var(--chart-1)", strokeWidth: 2, r: 3 }
 const chartMargin = { top: 10, right: 10, left: -20, bottom: 0 }
@@ -83,7 +86,11 @@ const DashboardCharts = memo(function DashboardCharts({
                   tickLine={false}
                   axisLine={false}
                 />
-                <Tooltip contentStyle={tooltipStyle} />
+                <Tooltip
+                  contentStyle={tooltipStyle}
+                  animationDuration={0}
+                  cursor={staticCursor}
+                />
                 <Area
                   type="monotone"
                   dataKey="violations"
@@ -129,7 +136,10 @@ const DashboardCharts = memo(function DashboardCharts({
                     <Cell key={entry.name} fill={entry.color} />
                   ))}
                 </Pie>
-                <Tooltip contentStyle={tooltipStyle} />
+                <Tooltip
+                  contentStyle={tooltipStyle}
+                  animationDuration={0}
+                />
               </PieChart>
             </ResponsiveContainer>
             <div className="flex justify-center gap-6 mt-3">
@@ -169,7 +179,11 @@ const DashboardCharts = memo(function DashboardCharts({
                 tickLine={false}
                 axisLine={false}
               />
-              <Tooltip contentStyle={tooltipStyle} />
+              <Tooltip
+                contentStyle={tooltipStyle}
+                animationDuration={0}
+                cursor={staticCursor}
+              />
               <Line
                 type="monotone"
                 dataKey="compliance"

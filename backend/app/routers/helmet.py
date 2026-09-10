@@ -112,8 +112,10 @@ async def helmet_detection_events(
         except asyncio.CancelledError:
             logger.info("Detection events stream client disconnected")
         finally:
-            for task in pending:
+            # Cancel all pending tasks and wait for them to finish cleanly
+            for task in list(pending):
                 task.cancel()
+            await asyncio.gather(*pending, return_exceptions=True)
             get_camera_hub(camera_id).unsubscribe_detections(queue)
 
     return StreamingResponse(

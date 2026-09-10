@@ -32,18 +32,18 @@ export function Header({ onMenuClick }: HeaderProps) {
   }
 
   return (
-    <header className="h-12 bg-card/85 dark:bg-card/90 backdrop-blur-xl border border-border/80 flex items-center justify-between px-3 sm:px-4 rounded-2xl mx-3 sm:mx-4 mt-3 sm:mt-4 mb-1 shadow-xs">
+    <header className="h-12 bg-white/95 dark:bg-[#181818]/95 backdrop-blur-xl border border-neutral-200/80 dark:border-neutral-800/80 flex items-center justify-between px-3.5 sm:px-4 rounded-2xl mx-3 sm:mx-4 mt-3 sm:mt-4 mb-1 shadow-xs">
       <div className="flex items-center gap-2.5 sm:gap-3 min-w-0 flex-1">
         {/* Mobile Logo */}
-        <div className="flex md:hidden items-center justify-center w-8 h-8 rounded-xl bg-white shadow-xs border border-border/60 overflow-hidden flex-shrink-0">
+        <div className="flex md:hidden items-center justify-center w-8 h-8 rounded-xl bg-white dark:bg-neutral-900 shadow-xs border border-neutral-200/80 dark:border-neutral-700/60 overflow-hidden flex-shrink-0">
           <img src="/icon.png" alt="Logo" className="w-6 h-6 object-contain" />
         </div>
 
         <div className="flex flex-col min-w-0">
-          <span className="text-xs sm:text-sm font-bold tracking-tight text-foreground truncate">
+          <span className="text-xs sm:text-sm font-semibold tracking-tight text-neutral-900 dark:text-neutral-100 truncate">
             {t("login.title")}
           </span>
-          <span className="text-[10px] sm:text-[11px] text-muted-foreground truncate hidden sm:inline">
+          <span className="text-[10px] sm:text-[11px] font-medium text-neutral-400 dark:text-neutral-500 truncate hidden sm:inline">
             KMUTT Real-time Safety Monitoring
           </span>
         </div>
@@ -56,10 +56,10 @@ export function Header({ onMenuClick }: HeaderProps) {
           variant="ghost"
           size="sm"
           onClick={handleLogout}
-          className="hover:bg-muted hover:text-foreground h-7 sm:h-8 rounded-xl px-2 sm:px-2.5 transition-colors"
+          className="hover:bg-neutral-100 dark:hover:bg-neutral-800 text-neutral-600 dark:text-neutral-300 hover:text-neutral-900 dark:hover:text-white h-7 sm:h-8 rounded-full px-2.5 sm:px-3 transition-colors"
         >
           <LogOut className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
-          <span className="ml-1.5 text-xs hidden sm:inline">{t("buttons.logout")}</span>
+          <span className="ml-1.5 text-xs hidden sm:inline font-medium">{t("buttons.logout")}</span>
         </Button>
       </div>
     </header>

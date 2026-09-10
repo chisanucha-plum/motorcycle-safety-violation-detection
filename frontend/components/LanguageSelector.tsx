@@ -31,10 +31,10 @@ export const LanguageSelector = memo(function LanguageSelector({ currentLanguage
         <Button
           variant="outline"
           size="sm"
-          className="flex items-center gap-2 rounded-xl bg-card border-border/80"
+          className="flex items-center gap-2 rounded-full h-8 px-3 bg-white/80 dark:bg-neutral-900/80 border-neutral-200/80 dark:border-neutral-700/60 text-neutral-700 dark:text-neutral-200 shadow-xs"
         >
-          <Globe className="h-4 w-4" />
-          <span className="text-xs sm:text-sm">{current?.name}</span>
+          <Globe className="h-3.5 w-3.5" />
+          <span className="text-xs sm:text-sm font-medium">{current?.name}</span>
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="w-40 rounded-xl">

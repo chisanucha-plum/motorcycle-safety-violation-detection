@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useMemo } from "react"
+import { useState, useEffect, useCallback } from "react"
 import enTranslations from "@/locales/en.json"
 import thTranslations from "@/locales/th.json"
 
@@ -11,12 +11,6 @@ type Translations = {
 // Global event bus for language changes
 const languageChangeEvent = "language-changed"
 
-const translationsMap: Record<Language, Translations> = {
-  en: enTranslations,
-  th: thTranslations,
-}
-
-// Pre-flatten translation maps for instant O(1) lookups
 const flattenedTranslations: Record<Language, Record<string, string>> = {
   en: {},
   th: {},
@@ -39,22 +33,20 @@ function flatten(obj: Translations, prefix = "", target: Record<string, string>)
 flatten(enTranslations, "", flattenedTranslations.en)
 flatten(thTranslations, "", flattenedTranslations.th)
 
-function getInitialLanguage(defaultLang: Language): Language {
-  if (typeof window === "undefined") return defaultLang
-  try {
-    const saved = localStorage.getItem("language") as Language | null
-    if (saved && (saved === "en" || saved === "th")) {
-      return saved
-    }
-  } catch {
-    // ignore storage access errors
-  }
-  return defaultLang
-}
-
 export function useLanguage(defaultLang: Language = "en") {
-  const [language, setLanguageState] = useState<Language>(() => getInitialLanguage(defaultLang))
-  const [isLoading, setIsLoading] = useState(false)
+  const [language, setLanguageState] = useState<Language>(defaultLang)
+
+  // Sync saved language from localStorage on client mount (avoids SSR hydration mismatch)
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem("language") as Language | null
+      if (saved && (saved === "en" || saved === "th")) {
+        setLanguageState(saved)
+      }
+    } catch {
+      // ignore storage access errors
+    }
+  }, [])
 
   // Listen for language changes from other components
   useEffect(() => {
@@ -90,5 +82,5 @@ export function useLanguage(defaultLang: Language = "en") {
     window.dispatchEvent(event)
   }, [])
 
-  return { language, t, setLang, isLoading }
+  return { language, t, setLang }
 }

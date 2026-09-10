@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState, useMemo } from "react"
+import { useEffect, useRef, useState, useMemo } from "react"
 import type React from "react"
 import {
   AlertCircle,
@@ -17,9 +17,10 @@ import {
   Users,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card"
 import { toast } from "sonner"
 import { useRealTimeDetections } from "@/hooks/useRealTimeDetections"
+import { useHelmetStats } from "@/hooks/useHelmetStats"
 import { useLanguage } from "@/hooks/useLanguage"
 import { loadDisplayPrefs } from "@/lib/app-settings"
 import { playViolationBeep } from "@/lib/alert-sound"
@@ -42,98 +43,115 @@ function NowClock() {
   return <>{now.toLocaleTimeString("th-TH")}</>
 }
 
+interface TodaySummary {
+  total_detections: number
+  total_violations: number
+  excess_passengers: number
+  compliance_percent: number
+}
+
 function FloatingStatsStack({
-  detections,
+  summary,
   isLoading,
+  isRecording,
+  onToggleRecording,
+  cameraLoading,
   t,
 }: {
-  detections: DetectionResult[]
+  summary: TodaySummary | null
   isLoading: boolean
+  isRecording: boolean
+  onToggleRecording: () => void
+  cameraLoading: boolean
   t: (key: string) => string
 }) {
-  const stats = useMemo(() => {
-    const violations = detections.filter((d) => d.helmetStatus === "not-wearing").length
-    const total = detections.length
-    const compliance = total > 0 ? Math.round(((total - violations) / total) * 100) : 0
-    const overCapacity = detections.filter((d) => d.passengerCount > 2).length
-    return { violations, total, compliance, overCapacity }
-  }, [detections])
-
   const statItems = [
     {
       icon: BikeIcon,
       label: t("stats.motorcyclesDetected"),
-      value: isLoading ? "-" : stats.total,
-      iconBg: "bg-[#DBEAFE] dark:bg-[#1e3a8a]/40",
-      iconColor: "text-[#3B82F6] dark:text-[#60a5fa]",
+      value: isLoading || !summary ? "-" : summary.total_detections,
     },
     {
       icon: Users,
       label: t("stats.overCapacity"),
-      value: isLoading ? "-" : stats.overCapacity,
-      iconBg: "bg-[#FEF3C7] dark:bg-[#78350f]/40",
-      iconColor: "text-[#F59E0B] dark:text-[#fbbf24]",
+      value: isLoading || !summary ? "-" : summary.excess_passengers,
     },
     {
       icon: AlertTriangle,
       label: t("stats.violations"),
-      value: isLoading ? "-" : stats.violations,
-      iconBg: "bg-[#FEE2E2] dark:bg-[#7f1d1d]/40",
-      iconColor: "text-[#EF4444] dark:text-[#f87171]",
+      value: isLoading || !summary ? "-" : summary.total_violations,
     },
     {
       icon: CheckCircle,
       label: t("stats.complianceRate"),
-      value: isLoading ? "-" : `${stats.compliance}%`,
-      iconBg: "bg-[#D1FAE5] dark:bg-[#064e3b]/40",
-      iconColor: "text-[#10B981] dark:text-[#34d399]",
+      value: isLoading || !summary ? "-" : `${summary.compliance_percent}%`,
     },
   ]
 
   return (
-    <div className="md:absolute md:top-3 md:right-4 z-20 flex flex-col w-full md:w-56 lg:w-60 mt-3 md:mt-0 pointer-events-auto">
-      {/* Cards: 2x2 Grid on Mobile, Vertical Stack on Desktop */}
-      <div className="grid grid-cols-2 md:flex md:flex-col gap-2 sm:gap-2.5">
+    <div className="absolute top-2 right-2 sm:top-3 sm:right-3 z-20 flex flex-col items-end gap-1.5 sm:gap-2 max-w-[calc(100%-16px)] sm:max-w-none w-64 xs:w-72 sm:w-80 pointer-events-auto">
+      {/* Camera Controls & Status Badge directly above the 2x2 stats */}
+      <div className="flex items-center justify-end gap-1 sm:gap-1.5 w-full">
+        {/* Status Badge + Last Updated */}
+        <div className="inline-flex items-center gap-1.5 px-2 py-1 sm:px-3 sm:py-1.5 rounded-full border border-neutral-200/80 dark:border-neutral-700/60 bg-white/95 dark:bg-[#1E1E1E]/95 backdrop-blur-md shadow-xs max-w-full">
+          <span
+            className={cn(
+              "w-2 h-2 rounded-full flex-shrink-0",
+              isRecording ? "bg-emerald-500 animate-pulse" : "bg-neutral-400"
+            )}
+          />
+          <span className="text-[10px] sm:text-[11px] font-medium text-neutral-800 dark:text-neutral-200 whitespace-nowrap">
+            {t("status." + (isRecording ? "running" : "stopped"))}
+          </span>
+          <span className="text-neutral-300 dark:text-neutral-600 select-none">•</span>
+          <span className="text-[10px] sm:text-[11px] text-neutral-500 dark:text-neutral-400 font-mono whitespace-nowrap">
+            <NowClock />
+          </span>
+        </div>
+
+        {/* Recording Toggle Button */}
+        <Button
+          variant={isRecording ? "destructive" : "default"}
+          size="sm"
+          onClick={onToggleRecording}
+          disabled={cameraLoading}
+          className="gap-1 sm:gap-1.5 rounded-full h-7 sm:h-8 px-2.5 sm:px-3 text-[10px] sm:text-xs shadow-xs font-medium flex-shrink-0"
+        >
+          {isRecording ? <EyeOff className="h-3 w-3 sm:h-3.5 sm:w-3.5" /> : <Eye className="h-3 w-3 sm:h-3.5 sm:w-3.5" />}
+          <span className="hidden sm:inline">{t("buttons." + (isRecording ? "stopRecording" : "startRecording"))}</span>
+        </Button>
+      </div>
+
+      {/* 2x2 Grid Stats Cards (Clean Bright White Style, Minimal Shadow) */}
+      <div className="grid grid-cols-2 gap-1.5 sm:gap-2 w-full p-1.5 sm:p-2 rounded-2xl bg-white/90 dark:bg-[#181818]/90 backdrop-blur-xl border border-white/80 dark:border-neutral-800/80 shadow-[0_4px_20px_rgba(0,0,0,0.06)] dark:shadow-[0_4px_20px_rgba(0,0,0,0.3)]">
         {statItems.map((item, idx) => {
           const Icon = item.icon
           return (
             <div
               key={idx}
               className={cn(
-                "group relative overflow-hidden rounded-[16px] p-3 sm:p-3.5",
-                "bg-[rgba(255,255,255,0.88)] dark:bg-[#17181c]/90 backdrop-blur-[14px]",
-                "border border-[rgba(255,255,255,0.6)] dark:border-white/15",
-                "border-t-white/90 dark:border-t-white/30",
-                "shadow-[0_12px_30px_rgba(0,0,0,0.15)]",
-                "transition-all duration-200 hover:-translate-y-0.5 hover:scale-[1.01] hover:shadow-[0_16px_36px_rgba(0,0,0,0.2)]"
+                "group relative overflow-hidden rounded-xl p-2 sm:p-3",
+                "bg-[#FBFBFA] dark:bg-[#222222] hover:bg-[#F5F5F3] dark:hover:bg-[#282828]",
+                "border border-neutral-100 dark:border-neutral-700/50",
+                "transition-colors duration-150"
               )}
             >
-              <div className="relative flex items-center justify-between gap-2">
-                <div className="min-w-0 flex-1">
-                  <p className="text-[10px] sm:text-[11px] font-semibold text-[#6B7280] dark:text-gray-400 uppercase tracking-[0.5px] truncate">
-                    {item.label}
-                  </p>
-                  <p className="text-lg sm:text-2xl font-bold tracking-tight text-[#111827] dark:text-white mt-0.5">
-                    {item.value}
-                  </p>
+              <div className="flex items-start justify-between gap-1">
+                <div className="w-5 h-5 sm:w-6 sm:h-6 rounded-md flex items-center justify-center text-neutral-600 dark:text-neutral-300">
+                  <Icon className="h-3.5 w-3.5 sm:h-4 sm:w-4 stroke-[1.75]" />
                 </div>
-                <div
-                  className={cn(
-                    "w-8 h-8 sm:w-10 sm:h-10 rounded-xl flex items-center justify-center flex-shrink-0 shadow-xs transition-transform duration-200 group-hover:scale-105",
-                    item.iconBg
-                  )}
-                >
-                  <Icon className={cn("h-4 w-4 sm:h-5 sm:w-5", item.iconColor)} />
-                </div>
+              </div>
+              <div className="mt-1 sm:mt-2 min-w-0">
+                <p className="text-[9px] sm:text-[10px] font-medium text-neutral-400 dark:text-neutral-400 tracking-tight truncate">
+                  {item.label}
+                </p>
+                <p className="text-sm xs:text-base sm:text-xl font-semibold text-neutral-900 dark:text-white tracking-tight mt-0.5">
+                  {item.value}
+                </p>
               </div>
             </div>
           )
         })}
-      </div>
-
-      {/* Soft reflection effect beneath the floating card stack (desktop only) */}
-      <div className="hidden md:block relative h-5 sm:h-6 w-full mt-1 overflow-hidden pointer-events-none opacity-35 dark:opacity-20">
-        <div className="w-full h-full bg-gradient-to-b from-black/15 dark:from-white/10 to-transparent blur-md rounded-2xl transform -scale-y-100" />
       </div>
     </div>
   )
@@ -166,15 +184,21 @@ function CampusMap({
   mjpegUrl,
   cameraLabel,
   violationRate = 0,
-  detections = [],
+  summary,
   isLoading = false,
+  isRecording,
+  onToggleRecording,
+  cameraLoading,
 }: {
   t: (key: string) => string
   mjpegUrl?: string
   cameraLabel: string
   violationRate?: number
-  detections?: DetectionResult[]
+  summary: TodaySummary | null
   isLoading?: boolean
+  isRecording: boolean
+  onToggleRecording: () => void
+  cameraLoading: boolean
 }) {
   const level = levelFromRate(violationRate)
 
@@ -196,19 +220,27 @@ function CampusMap({
   }, [expanded])
 
   return (
-    <Card className="overflow-hidden">
-      <CardHeader className="pb-2">
-        <CardTitle className="flex items-center gap-2 text-lg">
-          <MapPin className="h-5 w-5" />
-          {t("camera.campusMap")}
-        </CardTitle>
-      </CardHeader>
-      <CardContent className="p-2 pt-0">
-        <div className="relative">
-          <img src="/campus_map.png" alt="KMUTT Bangmod campus map" width={1866} height={1166} className="w-full h-auto rounded-md" />
+    <div className="w-full [filter:drop-shadow(0_8px_24px_rgba(0,0,0,0.12))] dark:[filter:drop-shadow(0_8px_24px_rgba(0,0,0,0.4))]">
+      <div className="relative rounded-2xl overflow-hidden bg-neutral-100/50 dark:bg-neutral-900/40">
+        <img src="/campus_map.png" alt="KMUTT Bangmod campus map" width={1866} height={1166} className="w-full h-auto block rounded-2xl" />
 
-          {/* Floating Glass Stats Stack overlapping on the right */}
-          <FloatingStatsStack detections={detections} isLoading={isLoading} t={t} />
+        {/* Campus Map label — glass pill top-left */}
+        <div className="absolute top-3 left-3 z-10 flex items-center gap-1.5 px-3 py-1.5 rounded-full
+          bg-[#F6F5F2]/90 dark:bg-[#1E1E1E]/90 backdrop-blur-xl
+          border border-neutral-200/80 dark:border-neutral-700/60 shadow-xs">
+          <MapPin className="h-3.5 w-3.5 text-neutral-600 dark:text-neutral-400" />
+          <span className="text-[11px] font-medium text-neutral-800 dark:text-neutral-200">{t("camera.campusMap")}</span>
+        </div>
+
+        {/* 2x2 Stats & Camera Controls at top-right */}
+        <FloatingStatsStack
+          summary={summary}
+          isLoading={isLoading}
+          isRecording={isRecording}
+          onToggleRecording={onToggleRecording}
+          cameraLoading={cameraLoading}
+          t={t}
+        />
 
           <div
             className="pin-wrap"
@@ -285,9 +317,8 @@ function CampusMap({
             </>
           )}
           </div>
-        </div>
-      </CardContent>
-    </Card>
+      </div>
+    </div>
   )
 }
 
@@ -298,6 +329,20 @@ export function RealTimeMonitoring() {
 
   // Client-effective preferences from the settings page (localStorage-backed)
   const [prefs] = useState(loadDisplayPrefs)
+
+  // Real today stats from database
+  const { stats: todayStats, isStatsLoading, refetch: refetchStats } = useHelmetStats("today")
+  const summary = todayStats?.summary ?? null
+
+  // Auto-refresh today stats every 15 seconds
+  const refetchRef = useRef(refetchStats)
+  useEffect(() => {
+    refetchRef.current = refetchStats
+  })
+  useEffect(() => {
+    const id = setInterval(() => refetchRef.current(), 15_000)
+    return () => clearInterval(id)
+  }, [])
 
   const handleNewDetections = (batch: DetectionResult[]) => {
     if (!prefs.notifyInApp && !prefs.notifySound) return
@@ -315,7 +360,11 @@ export function RealTimeMonitoring() {
   const { detections, isLoading, error, isRecording, setIsRecording } = useRealTimeDetections({
     maxItems: Math.min(prefs.realtimeRows, MAX_SSE_BUFFER),
     cameraId,
-    onDetections: handleNewDetections,
+    onDetections: (batch) => {
+      handleNewDetections(batch)
+      // When a new detection arrives, also trigger stats refresh
+      refetchRef.current()
+    },
   })
 
   const visibleDetections = useMemo(
@@ -331,12 +380,15 @@ export function RealTimeMonitoring() {
   }, [cameraId, isRecording])
 
   const violationRate = useMemo(() => {
+    if (summary && summary.total_detections > 0) {
+      return Math.round((summary.total_violations / summary.total_detections) * 100)
+    }
     if (detections.length === 0) return 0
     const violations = detections.filter(
       (d) => d.violation || d.helmetStatus === "not-wearing"
     ).length
     return Math.round((violations / detections.length) * 100)
-  }, [detections])
+  }, [summary, detections])
 
   return (
     <div className="space-y-5 sm:space-y-6">
@@ -356,63 +408,31 @@ export function RealTimeMonitoring() {
         </div>
       )}
 
-      {/* Top Header & Camera Action Controls */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div>
-          <h2 className="text-2xl font-bold tracking-tight text-foreground">{t("header.title")}</h2>
-          <p className="text-sm text-muted-foreground mt-0.5">
-            {t("header.lastUpdate")} <NowClock />
-          </p>
-        </div>
-
-        <div className="flex items-center flex-wrap gap-2.5 sm:gap-3">
-          {/* Status Badge */}
-          <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-xl border border-border/80 bg-card shadow-xs">
-            <span className={cn(
-              "w-2.5 h-2.5 rounded-full",
-              isRecording ? "bg-emerald-500 animate-pulse" : "bg-muted-foreground/40"
-            )} />
-            <span className="text-xs font-semibold text-muted-foreground">
-              {t("status." + (isRecording ? "running" : "stopped"))}
-            </span>
-          </div>
-
-          {/* Recording Toggle Button */}
-          <Button
-            variant={isRecording ? "destructive" : "default"}
-            size="sm"
-            onClick={() => setIsRecording(!isRecording)}
-            disabled={isLoading}
-            className="gap-2 rounded-xl h-9 px-3.5 shadow-xs font-semibold"
-          >
-            {isRecording ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-            {t("buttons." + (isRecording ? "stopRecording" : "startRecording"))}
-          </Button>
-        </div>
-      </div>
-
       <CampusMap
         t={t}
         mjpegUrl={mjpegUrl}
         cameraLabel={cameraLabel}
         violationRate={violationRate}
-        detections={detections}
-        isLoading={isLoading}
+        summary={summary}
+        isLoading={isStatsLoading}
+        isRecording={isRecording}
+        onToggleRecording={() => setIsRecording(!isRecording)}
+        cameraLoading={isLoading}
       />
 
-      {/* Latest Results Card */}
-      <Card className="rounded-2xl border-border/80 shadow-xs">
-        <CardHeader className="pb-3">
-          <CardTitle className="flex items-center gap-2 text-base sm:text-lg font-bold">
-            <Clock className="h-4.5 w-4.5 text-muted-foreground" />
+      {/* Latest Results Card - Clean Warm Minimalist */}
+      <Card className="rounded-2xl border-neutral-200/60 dark:border-neutral-800/80 bg-white/90 dark:bg-[#18181A]/90 backdrop-blur-xl shadow-[0_4px_20px_rgba(0,0,0,0.04)]">
+        <CardHeader className="pb-3 border-b border-neutral-100 dark:border-neutral-800/60">
+          <CardTitle className="flex items-center gap-2 text-base font-semibold text-neutral-900 dark:text-white">
+            <Clock className="h-4 w-4 text-neutral-500 dark:text-neutral-400" />
             {t("detection.latestResults")}
           </CardTitle>
         </CardHeader>
-        <CardContent>
+        <CardContent className="pt-4">
           {isLoading && detections.length === 0 ? (
             <div className="text-center py-12 text-muted-foreground">
-              <div className="w-10 h-10 border-3 border-primary/20 border-t-primary rounded-full animate-spin mx-auto mb-3" />
-              <p className="text-sm font-medium">{t("detection.loading")}</p>
+              <div className="w-8 h-8 border-2 border-primary/20 border-t-primary rounded-full animate-spin mx-auto mb-3" />
+              <p className="text-xs font-medium">{t("detection.loading")}</p>
             </div>
           ) : (
             <DetectionList detections={visibleDetections} t={t} />
